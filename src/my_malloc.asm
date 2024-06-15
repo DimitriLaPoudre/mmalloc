@@ -56,7 +56,9 @@
 
 section .data
     malloc_base dq -1
-    free_error db 'f', 'r', 'e', 'e', '(', ')', ':', ' ', 'i', 'n', 'v', 'a', 'l', 'i', 'd', ' ', 'p', 'o', 'i', 'n', 't', 'e', 'r', 10
+    malloc_bug db "malloc(): memory allocation failed", 10
+    free_error db "free(): invalid pointer", 10
+    free_bug db "free(): bug memory release", 10
 
 section .text
     global mmalloc
@@ -78,6 +80,8 @@ mmalloc:
         mov rsi, 4096
         mov rdx, 3
         syscall
+        cmp rax, 0
+        jl .malloc_error2
         cmp qword [r10], 0
         je .alloc
         mov r10, qword [r10]
@@ -114,6 +118,8 @@ mmalloc:
             mov rsi, 4096
             mov rdx, 1
             syscall
+            cmp rax, 0
+            jl .malloc_error2
             mov r10, r8
             jmp .loop_protect
     .bye:
@@ -129,6 +135,8 @@ mmalloc:
         mov r8, -1
         mov r9, 0
         syscall
+        cmp rax, 0
+        jl .malloc_error2
 
         mov qword [rel malloc_base], rax
         mov qword [rax], 0
@@ -152,6 +160,8 @@ mmalloc:
         syscall
         pop r10
         pop r8
+        cmp rax, 0
+        jl .malloc_error
 
         mov qword [r10], rax
         mov r10, rax
@@ -211,6 +221,9 @@ mmalloc:
         pop r10
         pop r8
 
+        cmp rax, 0
+        jl .malloc_error3
+
         mov qword [r10], rax
         mov r10, rax
         mov qword [r10], 0
@@ -248,6 +261,9 @@ mmalloc:
         pop r10
         pop r8
 
+        cmp rax, 0
+        jl .malloc_error
+
         mov rax, r8
         xor rdx, rdx
         mov rbx, 4096
@@ -262,8 +278,21 @@ mmalloc:
         jmp .split_malloc
 
     .malloc_error:
+        mov rax, 1
+        mov rdi, 2
+        lea rsi, [rel free_bug]
+        mov rdx, 26
+        syscall
         mov rax, 0
         ret
+    
+    .malloc_error2:
+        pop rax
+        jmp .malloc_error
+    
+    .malloc_error3:
+        pop rax
+        jmp .malloc_error2
 
 mfree:
     cmp rdi, 0
@@ -278,6 +307,8 @@ mfree:
         mov rsi, 4096
         mov rdx, 3
         syscall
+        cmp rax, 0
+        jl .bug_free2
         cmp qword [r10], 0
         je .dalloc
         mov r10, qword [r10]
@@ -368,6 +399,8 @@ mfree:
             mov rsi, 4096
             mov rdx, 1
             syscall
+            cmp rax, 0
+            jl .bug_free
             mov r10, r8
             jmp .loop_protect
 
@@ -484,6 +517,35 @@ mfree:
         mov rax, 62
         syscall
         ret
+    
+    .bug_free:
+        mov rax, 1
+        mov rdi, 2
+        lea rsi, [rel free_bug]
+        mov rdx, 26
+        syscall
+        mov rax, 39
+        syscall
+        mov rdi, rax
+        mov rsi, 6
+        mov rax, 62
+        syscall
+        ret
+
+    .bug_free2:
+        pop rax
+        mov rax, 1
+        mov rdi, 2
+        lea rsi, [rel free_bug]
+        mov rdx, 26
+        syscall
+        mov rax, 39
+        syscall
+        mov rdi, rax
+        mov rsi, 6
+        mov rax, 62
+        syscall
+        ret
 
 mcalloc:
     mov rax, rdi
@@ -532,6 +594,8 @@ show_malloc:
         mov rsi, 4096
         mov rdx, 3
         syscall
+        cmp rax, 0
+        jl .bye
         cmp qword [r10], 0
         je .alloc
         mov r10, qword [r10]
@@ -576,6 +640,8 @@ show_malloc:
             mov rsi, 4096
             mov rdx, 1
             syscall
+            cmp rax, 0
+            jl .bye
             mov r10, r8
             jmp .loop_protect
     .bye:
